@@ -71,7 +71,8 @@ uv run python main.py
 | **崩溃恢复** | 检测未完成的 `tool_calls` 序列，自动回滚到稳定状态 |
 
 **相关文件**：
-```
+
+```text
 chat_memory/
 ├── session.jsonl    # 完整对话历史（JSONL 追加写入）
 └── MEMORY.md        # 长期记忆（LLM 自动维护）
@@ -129,7 +130,7 @@ uv run python main.py
 
 ## 交互示例
 
-```
+```text
 🐱 CatClaw — Agent with Goal + Memory + MCP
 📝 已恢复 4 条历史消息
 
@@ -155,7 +156,7 @@ uv run python main.py
 
 ## 项目结构
 
-```
+```text
 CatClaw/
 ├── core/
 │   ├── node.py          # 工作流引擎 — Node + Flow（~56 行）
@@ -187,7 +188,7 @@ CatClaw/
 
 CatClaw 的核心是一个 **~56 行的工作流引擎**，在此基础上逐层叠加能力：
 
-```
+```text
                     ┌─────────────────────────┐
                     │      Goal Loop           │
                     │  run_goal() 外层循环       │

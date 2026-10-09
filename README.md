@@ -10,9 +10,10 @@ CatClaw 是一个目标驱动的自主 AI Agent，配备 **8 个内置工具**�
 # 1. 安装依赖
 uv sync
 
-# 2. 配置环境变量
-cp .env.example .env
-# 编辑 .env，填入 OPENAI_API_KEY 和 OPENAI_BASE_URL
+# 2. 配置环境变量：在项目根目录新建 .env，至少填入前两项
+#    OPENAI_API_KEY=sk-...
+#    OPENAI_BASE_URL=<你的服务地址>    # 任何 OpenAI 兼容协议服务均可
+#    OPENAI_MODEL_ID=kimi-k2.5        # 可选，不填则用 kimi-k2.5
 
 # 3. 运行
 uv run python main.py
@@ -22,11 +23,14 @@ uv run python main.py
 
 | 变量 | 说明 | 默认值 |
 |:----:|:----:|:------:|
-| `OPENAI_API_KEY` | API 密钥（**必填**） | - |
-| `OPENAI_BASE_URL` | API 地址（**必填**） | `https://api.deepseek.com` |
-| `OPENAI_MODEL_ID` | 模型 ID（**必填**） | `deepseek-v4-pro` |
+| `OPENAI_API_KEY` | API 密钥（**必填**） | 无，缺失则启动时提示退出 |
+| `OPENAI_BASE_URL` | API 地址（**必填**） | 无，代码里没有兜底值 |
+| `OPENAI_MODEL_ID` | 模型 ID（可选） | `kimi-k2.5` |
+| `TAVILY_API_KEY` | 搜索 API key（可选，见「网页搜索」一节） | 无，缺失则回退 bing |
 | `CATCLAW_MCP_COMMAND` | MCP Server 启动命令（可选） | - |
 | `CATCLAW_MCP_ARGS` | MCP Server 参数，逗号分隔（可选） | - |
+
+> `OPENAI_API_KEY` 和 `OPENAI_BASE_URL` 缺任何一个，[main.py](main.py) 会打印提示后直接退出；`OPENAI_MODEL_ID` 不填则回退到代码内的 `kimi-k2.5`。
 
 ## 功能特性
 
@@ -37,11 +41,25 @@ uv run python main.py
 | `read` | 读取文件内容 | `read("main.py", offset=1, limit=50)` |
 | `write` | 写入文件（自动创建父目录） | `write("out.txt", "hello")` |
 | `edit` | 精确文本替换（单次匹配） | `edit("f.py", "old", "new")` |
-| `bash` | 执行 Shell 命令 | `bash("ls -la")` |
+| `bash` | 执行 Shell 命令（默认 30 秒超时，输出 30KB/2000 行截断） | `bash("ls -la")` |
 | `grep` | 正则搜索文件内容 | `grep("class Node", ".", glob="*.py")` |
 | `find` | Glob 模式查找文件 | `find("**/*.py")` |
 | `ls` | 列出目录内容 | `ls(".")` |
-| `search` | DuckDuckGo 网页搜索 | `search("Python Agent")` |
+| `search` | 网页搜索（双通道，见下） | `search("Python Agent")` |
+
+#### 🌐 网页搜索：双通道自动回退
+
+`search` 按下面的顺序选通道，两个通道返回的结果结构完全一致（`{title, href, body}`），模型侧无感知：
+
+| 条件 | 通道 | 实测延迟 | 硬超时 |
+|------|------|---------|--------|
+| 配置了 `TAVILY_API_KEY` | Tavily API（返回已抽取的正文，通常无需再抓页面） | 7-10s | 20s |
+| 未配置，或 Tavily 调用失败 | ddgs 的 bing 后端（免费无需 key） | 15-30s，重试 2 次 | 35s |
+
+- 墙钟超时用 `ThreadPoolExecutor` 硬封顶 —— ddgs 自带的 `timeout` 只管连接阶段，慢响应能拖到 30s 以上
+- 两个通道都失败时抛 `SearchUnavailableError`，错误信息**面向上层模型**：明确写「不要再次调用 search」并给出替代方案（改用 `bash` + `curl -sL --max-time 20 <url>`）。早期版本抛裸连接异常，模型看不懂就反复重试，是评测超时的主要成因
+- key 配错时会往 stderr 打**一次**告警，避免静默降级成慢速通道
+- 本机网络实测：ddgs 的 8 个 text 后端里只有 `bing` 能返回结果，所以后端固定为 bing，不用默认的 `auto`（那会把 8 个引擎分批全试一遍，白等 20 秒）
 
 ### 🧠 对话记忆管理
 
@@ -149,15 +167,17 @@ CatClaw/
 │   │   ├── read.py      #   文件读取（offset/limit + 截断）
 │   │   ├── write.py     #   文件写入（自动创建父目录）
 │   │   ├── edit.py      #   精确文本替换（唯一匹配）
-│   │   ├── bash.py      #   Shell 命令执行（30KB/2000行截断）
+│   │   ├── bash.py      #   Shell 命令执行（默认 30s 超时 + 30KB/2000行截断）
 │   │   ├── grep.py      #   内容搜索（ripgrep + Python 回退）
 │   │   ├── find.py      #   文件查找（fd + Python glob 回退）
 │   │   ├── ls.py        #   目录列表（500条限制）
-│   │   ├── search.py    #   网页搜索（DuckDuckGo）
+│   │   ├── search.py    #   网页搜索（Tavily API + bing 双通道回退）
 │   │   └── tool_def.py  #   Tool 数据类 + LLM 格式转换
 │   └── mcp/             # MCP 协议扩展
 │       ├── client.py    #   MCP 客户端（后台线程长连接 + 同步桥）
 │       └── server.py    #   MCP 示例服务器（search/add/multiply）
+├── tests/
+│   └── test_search.py   # search 工具测试（9 个离线 mock + 5 个真实网络用例）
 ├── main.py              # 主程序入口 — ChatNode + ToolCallNode + Goal
 ├── pyproject.toml
 └── README.md
@@ -202,6 +222,6 @@ CatClaw 的核心是一个 **~56 行的工作流引擎**，在此基础上逐层
 | 包 | 用途 |
 |----|------|
 | `openai` | LLM API 客户端（兼容任何 OpenAI 协议服务） |
-| `ddgs` | DuckDuckGo 网页搜索 |
+| `ddgs` | 网页搜索（bing 后端）。Tavily 通道走标准库 `urllib`，不需要额外依赖 |
 | `fastmcp` | MCP 服务器框架 + 客户端（FastMCP 3.x） |
 | `python-dotenv` | `.env` 环境变量加载 |

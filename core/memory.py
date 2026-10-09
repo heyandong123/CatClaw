@@ -5,8 +5,8 @@ from typing import Any
 from core.llm import call_llm
 
 
-MEMORY_FILEPATH = Path(r".\chat_memory\session.jsonl")                                # 对话记忆文件存储路径（jsonl格式）
-LONG_TERM_MEMORY_FILEPATH = Path(r".\chat_memory\MEMORY.md")                          # 长期记忆文件存储路径（md格式）
+MEMORY_FILEPATH = Path("chat_memory") / "session.jsonl"                                # 对话记忆文件存储路径（jsonl格式）
+LONG_TERM_MEMORY_FILEPATH = Path("chat_memory") / "MEMORY.md"                          # 长期记忆文件存储路径（md格式）
 MAX_CONTEXT_LENGTH = 128_000                                                          # 大模型最大上下文窗口大小（按token计算）
 COMPRESS_THRESHOLD = 0.9                                                              # 摘要压缩阈值（达到阈值后自动摘要压缩）
 KEEP_MESSAGES_ON_COMPRESS = 4                                                         # 摘要压缩对话之后保留的最近消息条数

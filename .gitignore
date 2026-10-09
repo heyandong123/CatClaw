@@ -6,9 +6,11 @@ __pycache__/
 chat_memory/
 eval_results/
 
-# 反斜杠路径 bug 的产物（见 CLAUDE.md「已知问题」）：
-# 真实磁盘文件名整体是 ".\chat_memory\session.jsonl" —— 一个不含正斜杠的
-# 单文件名，所以上面那条只匹配目录的 `chat_memory/` 拦不住它，只能按文件名通配。
+# 兜底：防止记忆文件再次落到 chat_memory/ 之外。
+# memory.py 曾用 Windows 风格反斜杠路径，在 macOS/Linux 上会被当成一个不含正斜杠的
+# 单文件名、直接落到仓库根目录 —— 上面那条 `chat_memory/` 只匹配目录，拦不住它，
+# 一句 `git add .` 就会把真实对话历史提交进公开仓库。bug 已修（见 git log），
+# 这条规则留着兜底。
 # ⚠️ 别照抄文件名写成 `.\chat_memory\*`：.gitignore 里反斜杠是转义符，要匹配一个
 #    字面反斜杠必须写两个（`*\\chat_memory\\*` 实测可用）；只写一个的版本实测
 #    谁都不匹配，规则会静默失效 —— 这是补这条规则时最容易踩的坑。

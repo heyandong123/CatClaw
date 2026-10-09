@@ -42,11 +42,11 @@ def get_builtin_tools() -> List[Tool]:
     from .read import read_file
     from .write import write_file
     from .edit import edit_file
-    from .bash import bash
+    from .bash import DEFAULT_TIMEOUT_S, bash
     from .grep import grep
     from .find import find
     from .ls import ls
-    from .search import search
+    from .search import backend_name, search
 
     return [
         Tool(
@@ -92,12 +92,20 @@ def get_builtin_tools() -> List[Tool]:
         ),
         Tool(
             name="bash",
-            description="Execute bash command. Output truncated to 2000 lines or 30KB.",
+            description=(
+                "Execute bash command. Output truncated to 2000 lines or 30KB. "
+                f"Commands are killed after {DEFAULT_TIMEOUT_S}s by default. "
+                "macOS has no GNU `timeout` command — for network calls use "
+                "`curl -sL --max-time 20 <url>` instead."
+            ),
             parameters={
                 "type": "object",
                 "properties": {
                     "command": {"type": "string", "description": "Command to execute"},
-                    "timeout": {"type": "integer", "description": "Timeout in seconds"},
+                    "timeout": {
+                        "type": "integer",
+                        "description": f"Timeout in seconds (default {DEFAULT_TIMEOUT_S})",
+                    },
                 },
                 "required": ["command"],
             },
@@ -143,7 +151,12 @@ def get_builtin_tools() -> List[Tool]:
         ),
         Tool(
             name="search",
-            description="Search the web for up-to-date information and return relevant results.",
+            description=(
+                "Search the web for up-to-date information and return relevant results. "
+                f"Current backend: {backend_name()}. "
+                "Use it to discover URLs, then fetch specific pages with bash "
+                "(`curl -sL --max-time 20 <url>`)."
+            ),
             parameters={
                 "type": "object",
                 "properties": {

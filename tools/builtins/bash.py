@@ -8,6 +8,9 @@ from pathlib import Path
 
 DEFAULT_MAX_BYTES = 30 * 1024
 DEFAULT_MAX_LINES = 2000
+# 默认超时。不设的话 subprocess.run(timeout=None) 会一直等，
+# 命令挂死 = 整个 agent 挂死。模型很少主动传 timeout，所以默认值必须安全。
+DEFAULT_TIMEOUT_S = 30
 
 
 def bash(command: str, timeout: int | None = None, cwd: str | None = None) -> dict:
@@ -16,12 +19,14 @@ def bash(command: str, timeout: int | None = None, cwd: str | None = None) -> di
 
     Args:
         command: 要执行的命令
-        timeout: 超时时间（秒）
+        timeout: 超时时间（秒），默认 DEFAULT_TIMEOUT_S（30 秒）
         cwd: 工作目录
 
     Returns:
         包含 stdout, stderr, exit_code 的字典
     """
+    effective_timeout = timeout if timeout is not None else DEFAULT_TIMEOUT_S
+
     if cwd:
         work_dir = Path(cwd)
     else:
@@ -37,7 +42,7 @@ def bash(command: str, timeout: int | None = None, cwd: str | None = None) -> di
             cwd=work_dir,
             capture_output=True,
             text=True,
-            timeout=timeout,
+            timeout=effective_timeout,
         )
 
         output = result.stdout
@@ -65,7 +70,12 @@ def bash(command: str, timeout: int | None = None, cwd: str | None = None) -> di
     except subprocess.TimeoutExpired:
         return {
             "stdout": "",
-            "stderr": f"Command timed out after {timeout} seconds",
+            "stderr": (
+                f"Command timed out after {effective_timeout} seconds. "
+                "Do not retry the same command unchanged. Give the inner command its own "
+                "timeout (e.g. `curl -sL --max-time 20 <url>`) or narrow its scope. "
+                "Note: macOS has no GNU `timeout` command — use `curl --max-time` or `gtimeout`."
+            ),
             "exit_code": -1,
         }
     except Exception as e:

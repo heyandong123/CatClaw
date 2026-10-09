@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CatClaw 是一个教学用（"零基础学Agent"）的轻量级 AI Agent 框架：目标驱动、带 8 个内置工具、对话记忆管理（持久化 + 自动压缩 + 长期记忆）、MCP 协议扩展和 Goal 循环。代码注释、README 与终端 UI 均为中文 — 新增/修改代码时保持中文注释风格。
 
-全仓约 2860 行 Python，无 pytest、无 lint 配置。最大的文件是评测 harness [eval_gaia.py](eval_gaia.py)（406 行）。
+全仓约 2860 行 Python，无 pytest、无 Python lint 配置（markdown 另有 [.markdownlint.jsonc](.markdownlint.jsonc)，豁免 MD013/MD036，理由见该文件注释）。最大的文件是评测 harness [eval_gaia.py](eval_gaia.py)（406 行）。
 
 ## Commands
 
@@ -89,7 +89,6 @@ uv run python eval_gaia.py --no-goal                     # 对比：不走 goal 
 
 - **记忆路径是相对 CWD 的**：[core/memory.py:8-9](core/memory.py#L8-L9) 现在是 `Path("chat_memory") / "session.jsonl"`，相对**当前工作目录**解析而非仓库根。按 README 从仓库根运行时没问题；但用 `uv run catclaw` 从别的目录启动时，`chat_memory/` 会建在那个目录里、读不到原有对话历史。要彻底解决需锚定到 `Path(__file__).resolve().parent.parent`。（历史：这两行曾用 Windows 风格反斜杠路径 `Path(r".\chat_memory\session.jsonl")`，在 macOS/Linux 上被当成单个文件名、直接落到仓库根目录，2026-10 已修。）
 - **ToolCallNode 返回 `("chat", None)` 会覆盖 payload**（[main.py:93](main.py#L93)）。任何复用/包装这条循环的代码，若想拿到最终答案，必须在每次 ChatNode 返回后**立即捕获**，不能等循环结束再取——`goal_complete` 往往正是最后一步，此时 payload 已是 `None`。
-- **README 与代码脱节**：README 的「监督层」章节、项目结构树里的 `core/hooks.py` / `core/goal.py`、以及 `cp .env.example .env` 的指引都已失效——这些文件不存在，`.env.example` 也已删除。README 声称默认模型 `deepseek-v4-pro`、`OPENAI_BASE_URL` 有默认值，实际代码默认模型是 `kimi-k2.5` 且 BASE_URL 无默认（必填）。
 - **GAIA 数据集缺失**：`eval_gaia.py` 默认路径 `/Users/heyandong/Downloads/gaia_validation.jsonl` 已不存在（2026-09 时还在），重新评测前需先恢复数据集。
 - **搜索延迟仍是大头**：即使走 Tavily 单次也要 7-10s，无 key 走 bing 则 15-30s。一道需要 5-10 次检索的 GAIA 题仍要 50-300s，`QUESTION_TIMEOUT_S = 300` 的墙钟上限依然容易被吃满。历史评测（2026-09，修复前）30 题 24 题超时，其中 `goal_complete` 的 11/11 全对、`timeout` 的 0/28 全错——**成败与终止原因完全一致，说明瓶颈在联网而非模型能力**。
 - `Memory.compress` 内部有**隐藏的 LLM 调用**（[memory.py:120-130](core/memory.py#L120-L130)），长对话或批量评测会产生额外 token 成本。

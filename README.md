@@ -159,7 +159,7 @@ uv run python main.py
 ```text
 CatClaw/
 ├── core/
-│   ├── node.py          # 工作流引擎 — Node + Flow（~56 行）
+│   ├── node.py          # 工作流引擎 — Node + Flow（55 行）
 │   ├── llm.py           # LLM 调用接口（OpenAI 兼容协议）
 │   └── memory.py        # 对话记忆管理（持久化 + 压缩 + 长期记忆）
 ├── tools/
@@ -186,7 +186,7 @@ CatClaw/
 
 ## 架构设计
 
-CatClaw 的核心是一个 **~56 行的工作流引擎**，在此基础上逐层叠加能力：
+CatClaw 的核心是一个 **55 行的工作流引擎**，在此基础上逐层叠加能力：
 
 ```text
                     ┌─────────────────────────┐

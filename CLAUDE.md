@@ -87,7 +87,7 @@ uv run python eval_gaia.py --no-goal                     # 对比：不走 goal 
 
 ## 已知问题
 
-- [core/memory.py:8-9](core/memory.py#L8-L9) 用 Windows 风格反斜杠路径（`.\chat_memory\session.jsonl`）。在 macOS/Linux 上 `Path` 不解析反斜杠，会在仓库根目录创建字面名为 `.\chat_memory\session.jsonl` 的文件（git status 显示为 `".\\chat_memory\\..."`），而不是写进 `chat_memory/` 目录。`.gitignore` 只忽略 `chat_memory/`，所以这些反斜杠命名文件会显示为 untracked。修改记忆路径时应改用 `Path("chat_memory") / "session.jsonl"` 或正斜杠。
+- [core/memory.py:8-9](core/memory.py#L8-L9) 用 Windows 风格反斜杠路径（`.\chat_memory\session.jsonl`）。在 macOS/Linux 上 `Path` 不解析反斜杠，会在仓库根目录创建字面名为 `.\chat_memory\session.jsonl` 的文件（git status 显示为 `".\\chat_memory\\..."`），而不是写进 `chat_memory/` 目录。`.gitignore` 里原有的 `chat_memory/` 末尾带斜杠、只匹配目录，拦不住它们，已另加一条 `*chat_memory*` 兜住（⚠️ 别改写成 `.\chat_memory\*`：反斜杠在 .gitignore 里是转义符，那种写法谁都不匹配、静默失效）。修改记忆路径时应改用 `Path("chat_memory") / "session.jsonl"` 或正斜杠。
 - **ToolCallNode 返回 `("chat", None)` 会覆盖 payload**（[main.py:93](main.py#L93)）。任何复用/包装这条循环的代码，若想拿到最终答案，必须在每次 ChatNode 返回后**立即捕获**，不能等循环结束再取——`goal_complete` 往往正是最后一步，此时 payload 已是 `None`。
 - **README 与代码脱节**：README 的「监督层」章节、项目结构树里的 `core/hooks.py` / `core/goal.py`、以及 `cp .env.example .env` 的指引都已失效——这些文件不存在，`.env.example` 也已删除。README 声称默认模型 `deepseek-v4-pro`、`OPENAI_BASE_URL` 有默认值，实际代码默认模型是 `kimi-k2.5` 且 BASE_URL 无默认（必填）。
 - **GAIA 数据集缺失**：`eval_gaia.py` 默认路径 `/Users/heyandong/Downloads/gaia_validation.jsonl` 已不存在（2026-09 时还在），重新评测前需先恢复数据集。
